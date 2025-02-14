@@ -6,7 +6,7 @@ import java.time.LocalDate
 data class MatchedResult(
     override val transactionId: String,
     val amount: BigDecimal,
-    val netProfit: BigDecimal,
-    val grossProfit: BigDecimal,
-    override val transactionDate: LocalDate
+    override val transactionDate: LocalDate,
+    private val customerFee: BigDecimal = BigDecimal(1000),
+    private val partnerFee: BigDecimal = BigDecimal(500)
 ) : SettlementResult()
