@@ -15,5 +15,6 @@ data class Transactions(
     val id: Long = 0,
     val transactionId: String = "",
     val amount: BigDecimal = BigDecimal.ZERO,
+    val fee: BigDecimal = BigDecimal(1000), // 결제 시 고객 수수료 (항상 1000원으로 가정)
     val transactionDate: LocalDateTime = LocalDateTime.now()
 )

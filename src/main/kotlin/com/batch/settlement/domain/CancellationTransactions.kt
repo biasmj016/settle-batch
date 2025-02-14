@@ -15,6 +15,6 @@ data class CancellationTransactions(
     val id: Long = 0,
     val transactionId: String = "",
     val amount: BigDecimal = BigDecimal.ZERO,
-    val loss: BigDecimal = BigDecimal.ZERO,
+    val loss: BigDecimal = BigDecimal(1000), // 취소 시 고객 환불로 인한 손실 (1000원)
     val transactionDate: LocalDate = LocalDate.now()
 )

@@ -15,6 +15,6 @@ data class SuspiciousTransactions(
     val id: Long = 0,
     val transactionId: String = "",
     val amount: BigDecimal = BigDecimal.ZERO,
-    val loss: BigDecimal = BigDecimal.ZERO,
+    val loss: BigDecimal = BigDecimal(1000),// 확인이 필요한 이상 거래 건이나 임시로 손실로 가정
     val transactionDate: LocalDate = LocalDate.now()
 )
