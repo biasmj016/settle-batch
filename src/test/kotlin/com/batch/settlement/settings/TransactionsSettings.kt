@@ -54,6 +54,7 @@ class TransactionsSettings {
             val partnerTransactionDate = LocalDateTime.now().plusSeconds(i.toLong())
             val transactionDate = partnerTransactionDate.minusNanos(1_000_000)// 파트너 사로 요청이 들어가는 시간보다 1ms 의 차가 있다고 설정
             val amount = BigDecimal(Random.nextInt(1, 1000) * 1000)
+
             transactionList.add(
                 Transactions(
                     transactionId = transactionId,
@@ -62,7 +63,7 @@ class TransactionsSettings {
                     transactionDate = transactionDate
                 )
             )
-            partnerTransactions(partnerTransactionList).add(
+            partnerTransactionList.add(
                 PartnerTransactions(
                     transactionId = partnerTransactionId,
                     amount = amount + BigDecimal(1000),
@@ -107,19 +108,16 @@ class TransactionsSettings {
     @Test
     fun all_test() {
         // Case 1: 내부 거래만 존재, Case 2: 파트너 거래만 존재, Case 3: 매칭되는 거래
-        val txOnlyCount = transactionRows * percent / 100
-        val ptOnlyCount = transactionRows * percent / 100
+        val transactionOnly = transactionRows * percent / 100
+        val partnerTransactionOnly = transactionRows * percent / 100
         val (transactionList, partnerTransactionList) = generateData(transactionRows) { i, defaultId ->
             when {
-                i < txOnlyCount -> Pair(defaultId, UUID.randomUUID().toString())
-                i < txOnlyCount + ptOnlyCount -> Pair(UUID.randomUUID().toString(), defaultId)
+                i < transactionOnly -> Pair(defaultId, UUID.randomUUID().toString())
+                i < transactionOnly + partnerTransactionOnly -> Pair(UUID.randomUUID().toString(), defaultId)
                 else -> Pair(defaultId, defaultId)
             }
         }
         transactionsRepository.saveAll(transactionList)
         partnerTransactionsRepository.saveAll(partnerTransactionList)
     }
-
-    private fun partnerTransactions(partnerTransactionList: MutableList<PartnerTransactions>) =
-        partnerTransactionList
 }
