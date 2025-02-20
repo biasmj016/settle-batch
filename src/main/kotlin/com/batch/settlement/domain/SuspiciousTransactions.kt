@@ -1,10 +1,6 @@
 package com.batch.settlement.domain
 
-import jakarta.persistence.Entity
-import jakarta.persistence.Table
-import jakarta.persistence.GeneratedValue
-import jakarta.persistence.GenerationType
-import jakarta.persistence.Id
+import jakarta.persistence.*
 import java.math.BigDecimal
 import java.time.LocalDate
 
@@ -17,4 +13,10 @@ data class SuspiciousTransactions(
     val amount: BigDecimal = BigDecimal.ZERO,
     val loss: BigDecimal = BigDecimal(1000),// 확인이 필요한 이상 거래 건이나 임시로 손실로 가정
     val transactionDate: LocalDate = LocalDate.now()
-)
+){
+    constructor(transactions: PartnerTransactions) : this(
+        transactionId = transactions.transactionId,
+        amount = transactions.amount,
+        transactionDate = transactions.transactionDate.toLocalDate()
+    )
+}
