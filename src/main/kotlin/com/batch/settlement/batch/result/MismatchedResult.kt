@@ -6,6 +6,6 @@ import java.time.LocalDate
 data class MismatchedResult(
     override val transactionId: String,
     val amount: BigDecimal,
-    private val loss: BigDecimal = BigDecimal(1000),
+    val loss: BigDecimal = BigDecimal(1000),
     override val transactionDate: LocalDate
 ) : SettlementResult()
