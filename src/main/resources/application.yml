@@ -5,6 +5,15 @@ spring:
     password: settlepw
     driver-class-name: org.postgresql.Driver
 
+  sql:
+    init:
+      mode: always
+      platform: postgresql
+
+  batch:
+    jdbc:
+      initialize-schema: always
+
   jpa:
     hibernate:
       ddl-auto: update
