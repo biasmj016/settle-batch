@@ -2,12 +2,8 @@ package com.batch.settlement.settings
 
 import com.batch.settlement.domain.PartnerTransactions
 import com.batch.settlement.domain.Transactions
-import com.batch.settlement.repository.PartnerTransactionsRepository
-import com.batch.settlement.repository.TransactionsRepository
-import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.Test
+import com.batch.settlement.repository.*
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.context.TestConfiguration
 import java.math.BigDecimal
 import java.time.LocalDateTime
@@ -26,80 +22,205 @@ import kotlin.random.Random
 @TestConfiguration
 class TransactionsSettings @Autowired constructor(
     private val transactionsRepository: TransactionsRepository,
-    private val partnerTransactionsRepository: PartnerTransactionsRepository
+    private val partnerTransactionsRepository: PartnerTransactionsRepository,
+    private val matchedTransactionsRepository: MatchedTransactionsRepository,
+    private val cancellationTransactionsRepository: CancellationTransactionsRepository,
+    private val suspiciousTransactionsRepository: SuspiciousTransactionsRepository
 ) {
     var transactionRows: Int = 3000
     var percent: Int = 1
 
-    private val transactionList = mutableListOf<Transactions>()
-    private val partnerTransactionList = mutableListOf<PartnerTransactions>()
+    private var transactionList = mutableListOf<Transactions>()
+    private var partnerTransactionList = mutableListOf<PartnerTransactions>()
 
-    fun cleanDb() {
-        transactionsRepository.deleteAll()
-        partnerTransactionsRepository.deleteAll()
+    companion object {
+        private val TRANSACTION_FEE = BigDecimal(1000)
+        private val PARTNER_FEE = BigDecimal(500)
+        private val AMOUNT_ADDITION = BigDecimal(1000)
     }
 
-    fun getTransactionList(): List<Transactions> = transactionList
-    fun getPartnerTransactionList(): List<PartnerTransactions> = partnerTransactionList
+    fun cleanDb() {
+        listOf(
+            transactionsRepository,
+            partnerTransactionsRepository,
+            matchedTransactionsRepository,
+            cancellationTransactionsRepository,
+            suspiciousTransactionsRepository
+        ).forEach { it.deleteAll() }
+    }
 
     private fun generateData(
         count: Int,
-        idFunc: (i: Int, defaultId: String) -> Pair<String, String>
+        idFunc: (index: Int, defaultId: String) -> Pair<String, String>
     ) {
         transactionList.clear()
         partnerTransactionList.clear()
+        val baseTime = LocalDateTime.now()
 
         for (i in 0 until count) {
             val defaultId = UUID.randomUUID().toString()
-            val (transactionId, partnerTransactionId) = idFunc(i, defaultId)
-            val partnerTransactionDate = LocalDateTime.now().plusSeconds(i.toLong())
-            val transactionDate = partnerTransactionDate.minusNanos(1_000_000)
+            val (transId, partnerId) = idFunc(i, defaultId)
+            val partnerTime = baseTime.plusSeconds(i.toLong())
+            val transTime = partnerTime.minusNanos(1_000_000)
             val amount = BigDecimal(Random.nextInt(1, 1000) * 1000)
 
             transactionList.add(
                 Transactions(
-                    transactionId = transactionId,
+                    transactionId = transId,
                     amount = amount,
-                    fee = BigDecimal(1000),
-                    transactionDate = transactionDate
+                    fee = TRANSACTION_FEE,
+                    transactionDate = transTime
                 )
             )
             partnerTransactionList.add(
                 PartnerTransactions(
-                    transactionId = partnerTransactionId,
-                    amount = amount + BigDecimal(1000),
-                    fee = BigDecimal(500),
-                    transactionDate = partnerTransactionDate
+                    transactionId = partnerId,
+                    amount = amount + AMOUNT_ADDITION,
+                    fee = PARTNER_FEE,
+                    transactionDate = partnerTime
                 )
             )
         }
     }
 
+    // 내부와 파트너 모두에 동일한 데이터 생성
     fun all_matched_data() {
         generateData(transactionRows) { _, defaultId -> Pair(defaultId, defaultId) }
     }
 
+    // 내부 데이터는 모두 생성하되, partner 데이터는 처음 'unmatchedCount' 건은 추가하지 않음
     fun transaction_unmatched_data() {
-        generateData(transactionRows) { _, defaultId -> Pair(defaultId, defaultId) }
-        val unmatchedCount = (transactionRows * percent / 100)
-        partnerTransactionList.drop(unmatchedCount)
-    }
+        transactionList.clear()
+        partnerTransactionList.clear()
+        val unmatchedCount = transactionRows * percent / 100
+        val baseTime = LocalDateTime.now()
 
-    fun partner_transaction_unmatched_data() {
-        generateData(transactionRows) { _, defaultId -> Pair(defaultId, defaultId) }
-        val unmatchedCount = (transactionRows * percent / 100)
-        transactionList.drop(unmatchedCount)
-    }
+        for (i in 0 until transactionRows) {
+            val id = UUID.randomUUID().toString()
+            val partnerTime = baseTime.plusSeconds(i.toLong())
+            val transTime = partnerTime.minusNanos(1_000_000)
+            val amount = BigDecimal(Random.nextInt(1, 1000) * 1000)
 
-    fun all_test() {
-        val transactionOnly = transactionRows * percent / 100
-        val partnerTransactionOnly = transactionRows * percent / 100
-        generateData(transactionRows) { i, defaultId ->
-            when {
-                i < transactionOnly -> Pair(defaultId, UUID.randomUUID().toString())
-                i < transactionOnly + partnerTransactionOnly -> Pair(UUID.randomUUID().toString(), defaultId)
-                else -> Pair(defaultId, defaultId)
+            transactionList.add(
+                Transactions(
+                    transactionId = id,
+                    amount = amount,
+                    fee = TRANSACTION_FEE,
+                    transactionDate = transTime
+                )
+            )
+            if (i >= unmatchedCount) {
+                partnerTransactionList.add(
+                    PartnerTransactions(
+                        transactionId = id,
+                        amount = amount + AMOUNT_ADDITION,
+                        fee = PARTNER_FEE,
+                        transactionDate = partnerTime
+                    )
+                )
             }
+        }
+    }
+
+    // partner 데이터는 모두 생성하되, 내부 데이터는 처음 'unmatchedCount' 건은 추가하지 않음
+    fun partner_transaction_unmatched_data() {
+        transactionList.clear()
+        partnerTransactionList.clear()
+        val unmatchedCount = transactionRows * percent / 100
+        val baseTime = LocalDateTime.now()
+
+        for (i in 0 until transactionRows) {
+            val id = UUID.randomUUID().toString()
+            val partnerTime = baseTime.plusSeconds(i.toLong())
+            val transTime = partnerTime.minusNanos(1_000_000)
+            val amount = BigDecimal(Random.nextInt(1, 1000) * 1000)
+
+            if (i >= unmatchedCount) {
+                transactionList.add(
+                    Transactions(
+                        transactionId = id,
+                        amount = amount,
+                        fee = TRANSACTION_FEE,
+                        transactionDate = transTime
+                    )
+                )
+            }
+            partnerTransactionList.add(
+                PartnerTransactions(
+                    transactionId = id,
+                    amount = amount + AMOUNT_ADDITION,
+                    fee = PARTNER_FEE,
+                    transactionDate = partnerTime
+                )
+            )
+        }
+    }
+
+    // 내부 전용, 파트너 전용, 매칭 데이터를 구분하여 생성
+    fun all_test() {
+        val transOnlyCount = transactionRows * percent / 100
+        val partnerOnlyCount = transactionRows * percent / 100
+        val matchedCount = transactionRows - transOnlyCount - partnerOnlyCount
+
+        transactionList.clear()
+        partnerTransactionList.clear()
+        val baseTime = LocalDateTime.now()
+
+        // 매칭 거래: 내부와 파트너 모두 저장
+        (0 until matchedCount).forEach { i ->
+            val id = UUID.randomUUID().toString()
+            val amount = BigDecimal(Random.nextInt(1, 1000) * 1000)
+            val transTime = baseTime.plusSeconds(i.toLong()).minusNanos(1_000_000)
+            val partnerTime = baseTime.plusSeconds(i.toLong())
+
+            transactionList.add(
+                Transactions(
+                    transactionId = id,
+                    amount = amount,
+                    fee = TRANSACTION_FEE,
+                    transactionDate = transTime
+                )
+            )
+            partnerTransactionList.add(
+                PartnerTransactions(
+                    transactionId = id,
+                    amount = amount + AMOUNT_ADDITION,
+                    fee = PARTNER_FEE,
+                    transactionDate = partnerTime
+                )
+            )
+        }
+
+        // 내부 전용 거래: partner 데이터 미포함
+        (0 until transOnlyCount).forEach { i ->
+            val id = UUID.randomUUID().toString()
+            val amount = BigDecimal(Random.nextInt(1, 1000) * 1000)
+            val transTime = baseTime.plusSeconds((i + matchedCount).toLong())
+
+            transactionList.add(
+                Transactions(
+                    transactionId = id,
+                    amount = amount,
+                    fee = TRANSACTION_FEE,
+                    transactionDate = transTime
+                )
+            )
+        }
+
+        // 파트너 전용 거래: 내부 데이터 미포함
+        (0 until partnerOnlyCount).forEach { i ->
+            val id = UUID.randomUUID().toString()
+            val amount = BigDecimal(Random.nextInt(1, 1000) * 1000)
+            val partnerTime = baseTime.plusSeconds((i + matchedCount + transOnlyCount).toLong())
+
+            partnerTransactionList.add(
+                PartnerTransactions(
+                    transactionId = id,
+                    amount = amount + AMOUNT_ADDITION,
+                    fee = PARTNER_FEE,
+                    transactionDate = partnerTime
+                )
+            )
         }
     }
 
