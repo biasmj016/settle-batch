@@ -42,7 +42,6 @@ class SettlementBatchIntegrationTest {
     companion object {
         private val EXPECTED_NET_PROFIT = BigDecimal(500)
         private val EXPECTED_GROSS_PROFIT = BigDecimal(1000)
-        private val EXPECTED_LOSS = BigDecimal(1000)
     }
 
     @BeforeEach
@@ -50,11 +49,13 @@ class SettlementBatchIntegrationTest {
         transactionsSettings.cleanDb()
     }
 
-    private fun launchJob(job: Job): JobExecution {
+    private fun runAndAssertJob(): JobExecution {
         val jobParameters = JobParametersBuilder()
             .addLong("time", System.currentTimeMillis())
             .toJobParameters()
-        return jobLauncher.run(job, jobParameters)
+        val jobExecution = jobLauncher.run(settlementJob, jobParameters)
+        assertThat(jobExecution.status).isEqualTo(BatchStatus.COMPLETED)
+        return jobExecution
     }
 
     @Test
@@ -62,14 +63,13 @@ class SettlementBatchIntegrationTest {
         transactionsSettings.all_matched_data()
         transactionsSettings.saveData()
 
-        val jobExecution = launchJob(settlementJob)
+        runAndAssertJob()
 
-        assertThat(jobExecution.status).isEqualTo(BatchStatus.COMPLETED)
         val matchedResults = matchedRepository.findAll()
         assertThat(matchedResults).hasSize(transactionsSettings.transactionRows)
         matchedResults.forEach { matched ->
-            assertThat(matched.netProfit.compareTo(EXPECTED_NET_PROFIT)).isEqualTo(0)
-            assertThat(matched.grossProfit.compareTo(EXPECTED_GROSS_PROFIT)).isEqualTo(0)
+            assertThat(matched.netProfit).isEqualByComparingTo(EXPECTED_NET_PROFIT)
+            assertThat(matched.grossProfit).isEqualByComparingTo(EXPECTED_GROSS_PROFIT)
         }
         assertThat(cancellationRepository.findAll()).isEmpty()
         assertThat(suspiciousRepository.findAll()).isEmpty()
@@ -80,13 +80,13 @@ class SettlementBatchIntegrationTest {
         transactionsSettings.transaction_unmatched_data()
         transactionsSettings.saveData()
 
-        val jobExecution = launchJob(settlementJob)
+        runAndAssertJob()
 
-        assertThat(jobExecution.status).isEqualTo(BatchStatus.COMPLETED)
-        val cancellationResults = cancellationRepository.findAll()
         val expectedCancellation = transactionsSettings.transactionRows * transactionsSettings.percent / 100
+        val cancellationResults = cancellationRepository.findAll()
         assertThat(cancellationResults).hasSize(expectedCancellation)
-        assertThat(matchedRepository.findAll()).hasSize(transactionsSettings.transactionRows - expectedCancellation)
+        val expectedMatched = transactionsSettings.transactionRows - expectedCancellation
+        assertThat(matchedRepository.findAll()).hasSize(expectedMatched)
         assertThat(suspiciousRepository.findAll()).isEmpty()
     }
 
@@ -95,13 +95,13 @@ class SettlementBatchIntegrationTest {
         transactionsSettings.partner_transaction_unmatched_data()
         transactionsSettings.saveData()
 
-        val jobExecution = launchJob(settlementJob)
+        runAndAssertJob()
 
-        assertThat(jobExecution.status).isEqualTo(BatchStatus.COMPLETED)
-        val suspiciousResults = suspiciousRepository.findAll()
         val expectedSuspicious = transactionsSettings.transactionRows * transactionsSettings.percent / 100
+        val suspiciousResults = suspiciousRepository.findAll()
         assertThat(suspiciousResults).hasSize(expectedSuspicious)
-        assertThat(matchedRepository.findAll()).hasSize(transactionsSettings.transactionRows - expectedSuspicious)
+        val expectedMatched = transactionsSettings.transactionRows - expectedSuspicious
+        assertThat(matchedRepository.findAll()).hasSize(expectedMatched)
         assertThat(cancellationRepository.findAll()).isEmpty()
     }
 
@@ -110,20 +110,15 @@ class SettlementBatchIntegrationTest {
         transactionsSettings.all_test()
         transactionsSettings.saveData()
 
-        val jobExecution = launchJob(settlementJob)
+        runAndAssertJob()
 
-        assertThat(jobExecution.status).isEqualTo(BatchStatus.COMPLETED)
-
-        val matchedCount = matchedRepository.count()
         val expectedMatched = transactionsSettings.transactionRows * (100 - 2 * transactionsSettings.percent) / 100
-        assertThat(matchedCount.compareTo(expectedMatched)).isEqualTo(0)
+        assertThat(matchedRepository.count()).isEqualTo(expectedMatched.toLong())
 
-        val cancellationCount = cancellationRepository.count()
         val expectedCancellation = transactionsSettings.transactionRows * transactionsSettings.percent / 100
-        assertThat(cancellationCount.compareTo(expectedCancellation)).isEqualTo(0)
+        assertThat(cancellationRepository.count()).isEqualTo(expectedCancellation.toLong())
 
-        val suspiciousCount = suspiciousRepository.count()
         val expectedSuspicious = transactionsSettings.transactionRows * transactionsSettings.percent / 100
-        assertThat(suspiciousCount.compareTo(expectedSuspicious)).isEqualTo(0)
+        assertThat(suspiciousRepository.count()).isEqualTo(expectedSuspicious.toLong())
     }
 }
