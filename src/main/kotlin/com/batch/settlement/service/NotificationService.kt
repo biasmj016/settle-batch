@@ -14,7 +14,6 @@ class NotificationService(private val settlementEventProducer: SettlementEventPr
             취소건: ${statistics.cancellationCount}건, 총 손실: ${statistics.cancellationLoss}원
             이상거래건: ${statistics.suspiciousCount}건, 총 손실: ${statistics.suspiciousLoss}원
         """.trimIndent()
-        println(message)
 
         settlementEventProducer.sendEvent(message)
 
