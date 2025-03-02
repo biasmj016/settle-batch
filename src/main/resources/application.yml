@@ -24,6 +24,10 @@ spring:
 
   kafka:
     bootstrap-servers: localhost:9092
+    consumer:
+      auto-offset-reset: earliest
+    streams:
+      application-id: dashboard_group
 
   data:
     redis:
