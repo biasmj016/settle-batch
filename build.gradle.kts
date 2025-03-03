@@ -19,10 +19,12 @@ repositories {
 
 dependencies {
     implementation("org.springframework.boot:spring-boot-starter")
+    implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-batch")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-quartz")
     implementation("org.springframework.kafka:spring-kafka")
+    implementation("org.apache.kafka:kafka-streams:3.6.0")
     implementation ("org.springframework.boot:spring-boot-starter-data-redis")
     implementation ("com.fasterxml.jackson.core:jackson-databind")
     implementation ("com.fasterxml.jackson.module:jackson-module-kotlin")
@@ -36,6 +38,7 @@ dependencies {
     testImplementation("org.assertj:assertj-core:3.22.0")
     testImplementation("org.mockito:mockito-core:4.11.0")
     testImplementation("org.mockito.kotlin:mockito-kotlin:4.1.0")
+    testImplementation ("org.springframework.kafka:spring-kafka-test")
 }
 
 kotlin {

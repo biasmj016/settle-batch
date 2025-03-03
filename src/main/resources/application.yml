@@ -24,10 +24,11 @@ spring:
 
   kafka:
     bootstrap-servers: localhost:9092
-    consumer:
-      auto-offset-reset: earliest
     streams:
-      application-id: dashboard_group
+      application-id: settlement_streams
+      default:
+        key-serde: org.apache.kafka.common.serialization.Serdes$StringSerde
+        value-serde: org.apache.kafka.common.serialization.Serdes$StringSerde
 
   data:
     redis:
