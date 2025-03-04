@@ -40,13 +40,11 @@ class TransactionsSettings @Autowired constructor(
     }
 
     fun cleanDb() {
-        listOf(
-            transactionsRepository,
-            partnerTransactionsRepository,
-            matchedTransactionsRepository,
-            cancellationTransactionsRepository,
-            suspiciousTransactionsRepository
-        ).forEach { it.deleteAll() }
+        transactionsRepository.deleteAllTransactions()
+        partnerTransactionsRepository.deleteAllTransactions()
+        matchedTransactionsRepository.deleteAllTransactions()
+        cancellationTransactionsRepository.deleteAllTransactions()
+        suspiciousTransactionsRepository.deleteAllTransactions()
     }
 
     private fun generateData(
